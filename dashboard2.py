@@ -1,45 +1,50 @@
 
 # =============================================================================
 # START: urlopen / requests SSL Verification Disable Patches (Keep if needed)
-# =============================================================================
-import ssl
-import urllib.request
-import urllib.error
-import requests
-import warnings
-import traceback
+# --- Standard Libraries & Third-Party Imports (Start) ---
+# Keep imports from the previous patching block that are used elsewhere
+import ssl # Might be used implicitly by underlying libs, keep for safety
+import urllib.request # Might be used implicitly, keep for safety
+import urllib.error # Might be used implicitly, keep for safety
+import requests # Absolutely needed for API interaction
+import warnings # Used for filtering warnings later
+import traceback # Used for printing exceptions
 
-# --- urlopen Patch ---
-# print("--- Applying urlopen SSL Verification Disable Patch ---") # Keep logs minimal
-_original_urlopen = urllib.request.urlopen
-_unverified_context = None
-try: _unverified_context = ssl._create_unverified_context(); # print("   - Created unverified SSL context.")
-except AttributeError: # print("   - Warning: ssl._create_unverified_context not available.");
-    pass
-def _patched_urlopen(*args, **kwargs):
-    if _unverified_context and 'context' not in kwargs: kwargs['context'] = _unverified_context
-    try: return _original_urlopen(*args, **kwargs)
-    except urllib.error.URLError as e: print(f"   - Patched urlopen caught URLError: {e}"); raise e
-    except Exception as e: print(f"   - Patched urlopen caught unexpected Exception: {type(e).__name__} - {e}"); raise e
-urllib.request.urlopen = _patched_urlopen
-# print("--- urlopen patch applied (Potentially Insecure) ---")
+# Remove the entire SSL patch logic
 
-# --- requests Patch ---
-try: from requests.packages.urllib3.exceptions import InsecureRequestWarning
-except ImportError:
-    try: from urllib3.exceptions import InsecureRequestWarning
-    except ImportError: InsecureRequestWarning = None
-try:
-    if InsecureRequestWarning: warnings.simplefilter('ignore', InsecureRequestWarning)
-    original_request = requests.Session.request
-    def patched_request(*args, **kwargs): kwargs['verify'] = False; return original_request(*args, **kwargs)
-    requests.Session.request = patched_request
-    def patched_top_level_request(method, url, **kwargs): kwargs['verify'] = False; session = requests.Session(); return session.request(method=method, url=url, **kwargs)
-    requests.request = patched_top_level_request
-    requests.get = lambda url, params=None, **kwargs: requests.request("get", url, params=params, **kwargs)
-    requests.post = lambda url, data=None, json=None, **kwargs: requests.request("post", url, data=data, json=json, **kwargs)
-    # print("--- Requests SSL Verification Disabled via Patch (Insecure) ---")
-except Exception as patch_exc: print(f"!!! Failed to apply requests SSL patch: {patch_exc} !!!"); traceback.print_exc()
+# The rest of your standard imports follow
+import os
+import datetime
+import calendar
+import sys
+import re
+import time
+import math
+# warnings and traceback are already above
+from io import BytesIO
+import pickle
+from pathlib import Path
+
+# Other imports from the original script continue below
+import streamlit as st
+import pandas as pd
+import numpy as np
+try: import plotly.graph_objects as go; PLOTLY_AVAILABLE = True
+except ImportError: PLOTLY_AVAILABLE = False
+from dotenv import load_dotenv, find_dotenv # This is now handled by requirements.txt
+from termcolor import colored # This is now handled by requirements.txt
+try: from breeze_connect import BreezeConnect
+except ImportError: st.error("Fatal Error: breeze-connect library not found."); st.stop()
+
+# --- Standard Libraries & Third-Party Imports (End) ---
+
+
+# --- Suppress Warnings ---
+# Keep this as it uses the 'warnings' module imported above
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
+
+# ... Rest of your script remains unchanged ...
 # =============================================================================
 # END: SSL Verification Disable Patches
 # =============================================================================
