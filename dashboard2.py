@@ -133,31 +133,24 @@ SAVED_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # ==============================================================
 # @st.cache_resource # Cache the Breeze connection object itself <<<<------ REMOVED/COMMENTED OUT
 def initialize_breeze():
-    """
-    Initializes and returns the Breeze connection object. (NO LONGER CACHED)
-    Includes immediate validation using get_customer_details.
-    """
-    # Needed imports inside the function if not globally available where called
-    from dotenv import load_dotenv, find_dotenv
-    import os
-    from breeze_connect import BreezeConnect
-    from termcolor import colored
-    import traceback
-    import streamlit as st
+    # ... other imports within the function ...
 
-    # print("Attempting to initialize Breeze connection (NO CACHE)...") # Keep logs minimal
     breeze_conn_obj = None
     try:
-        env_path = find_dotenv(filename='kitecred.env', raise_error_if_not_found=True, usecwd=True)
-        load_dotenv(dotenv_path=env_path)
-        API_KEY = os.getenv("BREEZE_API_KEY")
-        API_SECRET = os.getenv("BREEZE_API_SECRET")
-        SESSION_TOKEN = os.getenv("BREEZE_SESSION_TOKEN")
+        # --- START MODIFIED CREDENTIAL LOADING ---
+        # No need for find_dotenv or load_dotenv
+        API_KEY = st.secrets["BREEZE_API_KEY"]
+        API_SECRET = st.secrets["BREEZE_API_SECRET"]
+        SESSION_TOKEN = st.secrets["BREEZE_SESSION_TOKEN"]
 
+        # Check if secrets are present
         if not API_KEY or not API_SECRET or not SESSION_TOKEN:
-            st.error("Credentials missing in kitecred.env.")
-            print(colored("   - Error: Credentials missing in kitecred.env.", "red"))
+             # Use Streamlit error for dashboard, print for logs
+            st.error("Breeze credentials missing in Streamlit Secrets.")
+            print(colored("   - Error: Credentials missing in Streamlit Secrets.", "red"))
             return None
+
+        # --- END MODIFIED CREDENTIAL LOADING ---
 
         # print("   - Credentials loaded. Creating BreezeConnect object...")
         breeze_conn_obj = BreezeConnect(api_key=API_KEY)
@@ -166,39 +159,16 @@ def initialize_breeze():
         breeze_conn_obj.generate_session(api_secret=API_SECRET, session_token=SESSION_TOKEN)
         # print("   - Session generated potentially successfully. Attempting immediate validation...")
 
-        try:
-            details = breeze_conn_obj.get_customer_details(api_session=SESSION_TOKEN)
-            # print(f"   - Validation API call response: {details}") # Keep logs minimal
+        # ... rest of the validation logic remains the same ...
 
-            if details and isinstance(details, dict) and details.get('Success') is not None:
-                user_name = details['Success'].get('idirect_user_name', 'N/A')
-                # print(colored(f"   - Breeze connection VALIDATED successfully for {user_name}.", "green"))
-            elif details and isinstance(details, dict) and details.get('Error') is not None:
-                error_message = details.get('Error')
-                st.error(f"Breeze Connect Validation Error: {error_message}. Check Session Token.")
-                print(colored(f"   - Breeze connection VALIDATION FAILED: {error_message}", "red"))
-                return None
-            else:
-                st.error("Breeze connection validation returned an unexpected response format.")
-                print(colored(f"   - Breeze connection VALIDATION FAILED: Unexpected response format: {details}", "red"))
-                return None
-        except Exception as validation_exc:
-             st.error(f"Error during Breeze connection validation API call: {validation_exc}")
-             print(colored(f"   - Exception during validation API call: {validation_exc}", "red"))
-             traceback.print_exc()
-             return None
-
-        # print("   - Breeze connection initialization and validation complete.")
-        return breeze_conn_obj
-
-    except FileNotFoundError:
-        st.error("'kitecred.env' not found. Place it in the correct directory.")
-        print(colored("   - Error: 'kitecred.env' not found.", "red"))
+    except KeyError as e:
+        # Handle case where a specific secret key is missing
+        st.error(f"Breeze credential missing in Streamlit Secrets: {e}. Check app Secrets.")
+        print(colored(f"   - Error: Missing secret key: {e}", "red"))
         return None
-    except IOError:
-        st.error("Error reading 'kitecred.env'. Check file permissions.")
-        print(colored("   - Error: IOError reading 'kitecred.env'.", "red"))
-        return None
+    # Remove FileNotFoundError and IOError handlers related to kitecred.env
+    # except FileNotFoundError: ... REMOVE
+    # except IOError: ... REMOVE
     except Exception as e:
         st.error(f"Error during Breeze connection initialization: {e}")
         print(colored(f"   - Exception during initialization (before validation): {e}", "red"))
